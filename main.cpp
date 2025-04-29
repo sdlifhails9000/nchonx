@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 #include <map>
 
 #include "http.h"
@@ -8,26 +9,44 @@
 
 static std::map<std::string, std::string> resource_map;
 
+void recvline(InetConnection& c, std::string& s) {
+	std::string ch:
+	do {
+		c.recv(ch, 1);
+		s += ch;
+		ch.clear();
+	} while (ch != "\n");
+}
+
 void *handle_request(void *arg) {
 	InetConnection client = *static_cast<InetConnection*>(arg);
-    HttpRequest req;
     std::ifstream f;
-    std::ostringstream response;
 	std::string request_line;
+    HttpRequest req;
+    HttpResponse resp;
+    
+    resp.set_version(1, 1);
 
 	if (client.recv(request_line, 1024) != 0) {
 		std::cerr << "whoops" << std::endl;
 		return nullptr;
 	}
 
-    req.parse_request_line(request_line);
+    if (req.parse_request_line(request_line) == HTTP_INVALID_REQUEST) {
+    	resp.set_status(400, "Malformed request");
+		resp.add_header("Content-Length", "0");
+
+		client.send(resp.get_as_string());
+		client.close();
+		return nullptr;
+    }
 
 	if (req.method != HttpMethod::GET) {
-		response << "HTTP/1.1 405 Method Not Allowed\r\n";
-		response << "Content-Length: 0\r\n";
-		response << "Allowed: GET\r\n\r\n";
+		resp.set_status(501, "Not implemented");
+		resp.add_header("Content-Length", "0");
+		resp.add_header("Allowed", "GET");
 
-		client.send(response.str());
+		client.send(resp.get_as_string());
 		client.close();
 		return nullptr;
 	}
@@ -37,49 +56,45 @@ void *handle_request(void *arg) {
 
 	if (it == resource_map.end()) {
 		file = "httpdoc/notfound.html";
-		response << "HTTP/1.1 404 Not found\r\n";
+		resp.set_status(404, "Not found");
 	} else {
 		file = it->second;
-		response << "HTTP/1.1 200 Good\r\n";
+		resp.set_status(200, "OK");
 	}	
+
+	resp.add_header("Transfer-Encoding", "chunked");
 
 	f.open(file, std::ios::binary);
 	f.seekg(0, f.end);
 	int n_left = f.tellg();
 	f.seekg(0, f.beg);
 
-	response << "Transfer-Encoding: chunked\r\n";
+	client.send(resp.get_as_string());
 
-	if (file == "httpdoc/download.jpg")
-		response << "Content-Type: image/jpeg\r\n";
-
-	response << "\r\n";
-
-	client.send(response.str());
-	response.str("");
-	response.clear();
-
+	std::ostringstream oss;
 	char f_buff[101] = {};
 	int amount = 100;
+
 	while (n_left > 0) {
 		f.read(f_buff, amount);
 		n_left -= f.gcount();
 
 		/* Creating the data chunk. */
-		response << std::hex << amount << "\r\n"; /* Chunk size */
-		response.write(f_buff, amount); /* This works for binary files as well. */
-		response << "\r\n"; /* Chunk end. */
+		oss << std::hex << amount << "\r\n"; /* Chunk size */
+		oss.write(f_buff, amount); /* This works for binary files as well. */
+		oss << "\r\n"; /* Chunk end. */
+		
+		client.send(oss.str());
 
 		if (n_left < 100)
 			amount = n_left;
 
-		client.send(response.str());
-	
-		memset(f_buff, '\0', sizeof(f_buff));
-		response.str("");
-		response.clear();
+		std::fill(f_buff, f_buff + sizeof(f_buff), '\0');
+		oss.str("");
+		oss.clear();
 	}
 
+    /* Final data chunk. */
 	client.send("0\r\n\r\n");
 
 	f.close();
@@ -107,3 +122,4 @@ int main(void) {
 
 	return 0;
 }
+

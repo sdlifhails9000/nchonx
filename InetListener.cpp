@@ -36,6 +36,7 @@ int InetListener::bind(const char *port, bool is_loopback) {
 	hints.ai_family = AF_INET;
 
 	getaddrinfo(addr.c_str(), port, &hints, &res);
+
 	for (struct addrinfo *iter = res; iter != nullptr; iter = iter->ai_next) {
 		if ((this->sock = socket(iter->ai_family, iter->ai_socktype, iter->ai_protocol)) == INVALID_SOCKET)
 			continue;
@@ -54,36 +55,36 @@ int InetListener::bind(const char *port, bool is_loopback) {
 
 	if (this->sock == INVALID_SOCKET) {
 		std::cerr << "ERROR: Can't bind to any address." << std::endl;
-		return 1;
+		return INET_ERROR;
 	}
 
-	return 0;
+	return INET_OK;
 }
 
 int InetListener::listen(int backlog) {
 	if (::listen(this->sock, backlog) != 0)
-		return ERROR;
+		return INET_ERROR;
 
-	return OK;
+	return INET_OK;
 }
 
 int InetListener::accept(InetConnection& c) {
 	if ((c.sock = ::accept(this->sock, NULL, NULL)) == INVALID_SOCKET)
-		return ERROR;
+		return INET_ERROR;
 
-	return OK;
+	return INET_OK;
 }
 
 int InetListener::shutdown(int type) {
 	if (::shutdown(this->sock, type) != 0)
-		return ERROR;
+		return INET_ERROR;
 
-	return OK;
+	return INET_OK;
 }
 
 int InetListener::close() {
 	if (closesocket(this->sock) != 0)
-		return ERROR;
+		return INET_ERROR;
 
-	return OK;
+	return INET_OK;
 }

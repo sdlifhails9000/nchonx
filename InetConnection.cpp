@@ -29,10 +29,10 @@ int InetConnection::connect(const char *addr, const char *port) {
 
 	if (this->sock == INVALID_SOCKET) {
 		std::cerr << "ERROR: Can't connect to any address." << std::endl;
-		return ERROR;
+		return INET_ERROR;
 	}
 
-	return OK;
+	return INET_OK;
 }
 
 int InetConnection::recv(std::string& s, int amount) {
@@ -40,13 +40,13 @@ int InetConnection::recv(std::string& s, int amount) {
 
 	if (::recv(this->sock, buffer, amount, 0) <= 0) {
 		delete[] buffer;
-		return -1;
+		return INET_ERROR;
 	}
 
 	s = buffer;
 	delete[] buffer;
 
-	return 0;
+	return INET_OK;
 }
 
 int InetConnection::send(const std::string&& s) {
@@ -55,15 +55,15 @@ int InetConnection::send(const std::string&& s) {
 
 int InetConnection::send(const std::string& s) {
 	if (::send(this->sock, s.c_str(), s.length(), 0) != 0)
-		return ERROR;
+		return INET_ERROR;
 
-	return OK;
+	return INET_OK;
 }
 
 
 int InetConnection::close() {
 	if (closesocket(this->sock) != 0)
-		return ERROR;
+		return INET_ERROR;
 
-	return OK;
+	return INET_OK;
 }

@@ -8,7 +8,7 @@ LIBS = -lws2_32
 
 # CXXFLAGS += -pthread
 
-SRCS = main.cpp InetListener.cpp InetConnection.cpp http.cpp
+SRCS = main.cpp InetListener.cpp InetConnection.cpp HttpRequest.cpp HttpResponse.cpp
 OBJS = $(SRCS:.cpp=.o)
 
 outbin = main.exe
@@ -20,7 +20,7 @@ $(outbin): $(OBJS)
 	$(CXX) -g -o $@ $^ $(LIBS)
 
 %.o: %.cpp
-	$(CXX) -g $(CXXFLAGS) -c -o $@ $< -lws2_32
+	$(CXX) -g $(CXXFLAGS) -c -o $@ $< $(LIBS)
 
 .PHONY: clean
 clean:

@@ -14,8 +14,10 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-// #define ERROR -1
-#define OK 0
+enum {
+	INET_ERROR = 0,
+	INET_OK
+};
 
 class InetConnection {
 public:
